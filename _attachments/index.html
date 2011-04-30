@@ -1,24 +1,26 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>My New CouchApp</title>
+    <title>Conceptual</title>
     <link rel="stylesheet" href="style/main.css" type="text/css">
   </head>
   <body>
     <div id="account"></div>
 
-    <h1>Generated CouchApp</h1>
-
+    <h1>Conceptual</h1>
+    <h3>Concept Mapping on the Couch</h3>
+    <div id="conceptmap"></div>
     <div id="profile"></div>
     <div id="items"></div>
 
     <div id="sidebar">
-      <p>Edit welcome message.</p>
-      <p>Ideas: You could easily turn this into a photo sharing app, or a grocery list, or a chat room.</p>
+      <p>Welcome to Conceptual, concept mapping in CouchDB.</p>
     </div>
   </body>
   <script src="vendor/couchapp/loader.js"></script>
+  <script src="./scripts/loader.js"></script>
   <script type="text/javascript" charset="utf-8">
+    $("#conceptmap").conceptMap();
     $.couch.app(function(app) {
       $("#account").evently("account", app);
       $("#profile").evently("profile", app);
