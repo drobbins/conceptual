@@ -111,28 +111,74 @@
       _.bindAll(this, 'render', 'addConcept', 'appendConcept');
 
       this.collection = new ConceptMap();
-      this.collection.bind('add', this.appendConcept);
+      this.collection.bind('add', this.render);
 
       this.render();
     },
 
     render : function(){
-      $(this.el).append("<p>Hey look, things!</p>");
+      $("#chart").html("");
+      $(this.el).html("");
       $(this.el).append('<form id="new_concept"><input name="subject" value="subject" /><input name="predicate" value="predicate" /><input name="object" value="object" /><input type="submit" id="add" value="Add" /></form>');
-      _(this.collection.models).each(function(concept){
-        appendConcept(concept);
-      }, this);
+      var w = 960,
+          h = 500,
+          json = this.collection.asNodesAndLinks();
+
+      var vis = d3.select("#chart").append("svg:svg")
+        .attr("width", w)
+        .attr("height", h);
+
+      var force = self.force = d3.layout.force()
+        .nodes(json.nodes)
+        .links(json.links)
+        .gravity(.05)
+        .distance(100)
+        .charge(-100)
+        .size([w, h])
+        .start();
+
+      var link = vis.selectAll("line.link")
+        .data(json.links)
+        .enter().append("svg:line")
+        .attr("class", "link")
+        .attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+      var node = vis.selectAll("g.node")
+        .data(json.nodes)
+        .enter().append("svg:g")
+        .attr("class", "node")
+        .call(force.drag);
+
+      node.append("svg:text")
+        .attr("class", "nodetext")
+        //.attr("dx", 12)
+        //.attr("dy", ".35em")
+        .text(function(d) { return d.name });
+
+      force.on("tick", function() {
+        link.attr("x1", function(d) { return d.source.x; })
+          .attr("y1", function(d) { return d.source.y; })
+          .attr("x2", function(d) { return d.target.x; })
+          .attr("y2", function(d) { return d.target.y; });
+
+        node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+      });
     },
 
     addConcept : function(){
-      var concept = new Concept(),
-          form = array_to_obj($("#new_concept").serializeArray());
-      concept.set({
-        subject : form.subject,
-        predicate : form.predicate,
-        object : form.object
-      });
-      this.collection.add(concept);
+      var form = array_to_obj($("#new_concept").serializeArray()),
+          sub = new Node({ name : form.subject}),
+          ob = new Node({ name : form.object}),
+          pred = new Node({ name : form.predicate}),
+          con = new Concept({
+            subject : sub,
+            object : ob,
+            predicate : pred
+          });
+      this.collection.add(con);
       return false;
     },
 
@@ -162,57 +208,4 @@
   cmap.add(con2);
   var json = cmap.asNodesAndLinks();
 
-  var w = 960,
-    h = 500
-
-  var vis = d3.select("#chart").append("svg:svg")
-    .attr("width", w)
-    .attr("height", h);
-
-  var force = self.force = d3.layout.force()
-    .nodes(json.nodes)
-    .links(json.links)
-    .gravity(.05)
-    .distance(100)
-    .charge(-100)
-    .size([w, h])
-    .start();
-
-  var link = vis.selectAll("line.link")
-    .data(json.links)
-    .enter().append("svg:line")
-    .attr("class", "link")
-    .attr("x1", function(d) { return d.source.x; })
-    .attr("y1", function(d) { return d.source.y; })
-    .attr("x2", function(d) { return d.target.x; })
-    .attr("y2", function(d) { return d.target.y; });
-
-  var node = vis.selectAll("g.node")
-    .data(json.nodes)
-    .enter().append("svg:g")
-    .attr("class", "node")
-    .call(force.drag);
-
-  node.append("svg:image")
-    .attr("class", "circle")
-    .attr("xlink:href", "https://d3nwyuy0nl342s.cloudfront.net/images/icons/public.png")
-    .attr("x", "-8px")
-    .attr("y", "-8px")
-    .attr("width", "16px")
-    .attr("height", "16px");
-
-  node.append("svg:text")
-    .attr("class", "nodetext")
-    .attr("dx", 12)
-    .attr("dy", ".35em")
-    .text(function(d) { return d.name });
-
-  force.on("tick", function() {
-    link.attr("x1", function(d) { return d.source.x; })
-      .attr("y1", function(d) { return d.source.y; })
-      .attr("x2", function(d) { return d.target.x; })
-      .attr("y2", function(d) { return d.target.y; });
-
-    node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
-  });
 })(jQuery);
