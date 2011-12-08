@@ -48,16 +48,32 @@
     model : Concept,
 
     initialize : function(){
-      _.bindAll(this, 'asNodesAndLinks');
+      _.bindAll(this, 'asNodesAndLinks', 'getNodeByName');
     },
 
     asNodesAndLinks : function(){
       var nodes = [],
-          links = [];
+          links = [],
+          names = [];
       this.forEach(function(concept){
-        var subject_index = nodes.push(concept.get('subject').asD3Node())-1,
-            predicate_index = nodes.push(concept.get('predicate').asD3Node())-1,
-            object_index = nodes.push(concept.get('object').asD3Node())-1;
+        var subject = concept.get('subject').asD3Node(),
+            predicate = concept.get('predicate').asD3Node(),
+            object = concept.get('object').asD3Node(),
+            subject_index = names.indexOf(subject.name),
+            predicate_index = names.indexOf(predicate.name),
+            object_index = names.indexOf(object.name);
+        if(subject_index === -1){
+          names.push(subject.name);
+          subject_index = nodes.push(concept.get('subject').asD3Node())-1;
+        }
+        if(predicate_index === -1){
+          names.push(predicate.name);
+          predicate_index = nodes.push(concept.get('predicate').asD3Node())-1;
+        }
+        if(object_index === -1){
+          names.push(object.name);
+          object_index = nodes.push(concept.get('object').asD3Node())-1;
+        }
         links.push({
           "source":subject_index,
           "target":predicate_index,
@@ -70,7 +86,24 @@
         });
       });
       return { 'nodes' : nodes, 'links' : links};
+    },
+
+    getNodeByName : function(name){
+      var named_concept;
+      this.forEach(function(concept){
+        if( concept.get('subject').get('name') === name){
+          named_concept = concept.get('subject');
+        }
+        if( concept.get('predicate').get('name') === name){
+          named_concept = concept.get('predicate');
+        }
+        if( concept.get('object').get('name') === name){
+          named_concept = concept.get('object');
+        }
+      });
+      return named_concept;
     }
+
   });
 
   var ConceptView = Backbone.View.extend({
@@ -156,7 +189,21 @@
         .attr("class", "nodetext")
         //.attr("dx", 12)
         //.attr("dy", ".35em")
-        .text(function(d) { return d.name });
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
+        .text(function(d) { return d.name })
+        .attr("transform", function(d){
+          d.text_length = this.getComputedTextLength();
+          return "";
+        });
+
+      node.insert("svg:rect", "text")
+        .attr("height", 15)
+        .attr("width", function(d){ return d.text_length+4; })
+        .style("fill", "#cccccc")
+        .attr("transform", function(d){ 
+          return "translate(-"+(d.text_length/2+2)+" -7.5)";
+        });
 
       force.on("tick", function() {
         link.attr("x1", function(d) { return d.source.x; })
@@ -170,9 +217,9 @@
 
     addConcept : function(){
       var form = array_to_obj($("#new_concept").serializeArray()),
-          sub = new Node({ name : form.subject}),
-          ob = new Node({ name : form.object}),
-          pred = new Node({ name : form.predicate}),
+          sub = this.collection.getNodeByName(form.subject) || new Node({ name : form.subject}),
+          ob = this.collection.getNodeByName(form.object) || new Node({ name : form.object}),
+          pred = this.collection.getNodeByName(form.predicate) || new Node({ name : form.predicate}),
           con = new Concept({
             subject : sub,
             object : ob,
@@ -197,15 +244,4 @@
     "Concept" : Concept,
     "ConceptMap" : ConceptMap
   }
-// Testing Code /*************************************************
-  var sub = new Node({name:"bob"});
-  var ob = new Node({name:"chicken"});
-  var pred = new Node({name:"likes"});
-  var con = new Concept({subject:sub, object:ob, predicate:pred});
-  var con2 = new Concept({subject:sub, object:ob, predicate:pred});
-  var cmap = new ConceptMap();
-  cmap.add(con);
-  cmap.add(con2);
-  var json = cmap.asNodesAndLinks();
-
 })(jQuery);
